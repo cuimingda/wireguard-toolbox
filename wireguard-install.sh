@@ -396,6 +396,7 @@ AllowedIPs = ${CLIENT_WG_IPV4}/32,${CLIENT_WG_IPV6}/128" >>"/etc/wireguard/${SER
 	fi
 
 	echo -e "${GREEN}Your client config file is in ${CLIENT_CONFIG_FILE}${NC}"
+	echo "Endpoint = ${ENDPOINT}"
 }
 
 # Check for root, virt, OS...
