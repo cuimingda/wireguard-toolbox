@@ -28,17 +28,17 @@ Supported distributions:
 
 ## Usage
 
-Download and execute the script. Answer the questions asked by the script and it will take care of the rest.
+Download and execute the script as root. The installer is non-interactive and uses its built-in defaults.
 
 ```bash
 curl -O https://raw.githubusercontent.com/angristan/wireguard-install/master/wireguard-install.sh
 chmod +x wireguard-install.sh
-./wireguard-install.sh
+sudo ./wireguard-install.sh
 ```
 
-It will install WireGuard (kernel module and tools) on the server, configure it, create a systemd service and a client configuration file.
+It will install WireGuard (kernel module and tools) on the server, configure it, create a systemd service and write a single client configuration file named `wg0-client.conf`.
 
-Run the script again to add or remove clients!
+This fork is intended for one server and one peer. Running the script again will fail if `/etc/wireguard/params`, `/etc/wireguard/wg0.conf`, or the target `wg0-client.conf` already exists, so existing configuration is not overwritten.
 
 ## Providers
 
