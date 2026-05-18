@@ -28,9 +28,23 @@ function installPackages() {
 	fi
 }
 
+function waitForCloudInit() {
+	if command -v cloud-init &>/dev/null; then
+		echo "Waiting for cloud-init to finish..."
+		if ! cloud-init status --wait; then
+			echo -e "${ORANGE}cloud-init status check failed. Continuing with package manager lock waits.${NC}"
+		fi
+	fi
+}
+
+function aptGet() {
+	apt-get -o DPkg::Lock::Timeout=600 "$@"
+}
+
 function runPortCheck() {
 	if [[ ! -f ${PORT_CHECK_SCRIPT} ]]; then
 		echo -e "${RED}Port check script not found: ${PORT_CHECK_SCRIPT}${NC}"
+		echo "Download wireguard-port-check.sh into the same directory as wireguard-install.sh before running this installer."
 		exit 1
 	fi
 
@@ -73,6 +87,7 @@ function checkVirt() {
 }
 
 function checkOS() {
+	# shellcheck source=/dev/null
 	source /etc/os-release
 	OS="${ID}"
 	if [[ ${OS} == "debian" || ${OS} == "raspbian" ]]; then
@@ -98,6 +113,7 @@ function checkOS() {
 			exit 1
 		fi
 	elif [[ -e /etc/oracle-release ]]; then
+		# shellcheck source=/dev/null
 		source /etc/os-release
 		OS=oracle
 	elif [[ -e /etc/arch-release ]]; then
@@ -143,7 +159,7 @@ function initialCheck() {
 
 function setDefaultConfig() {
 	echo "Welcome to the WireGuard installer!"
-	echo "The git repository is available at: https://github.com/angristan/wireguard-install"
+	echo "The git repository is available at: https://github.com/cuimingda/wireguard-toolbox"
 	echo ""
 	echo "Running non-interactive setup with default values."
 
@@ -182,16 +198,18 @@ function installWireGuard() {
 
 	# Install WireGuard tools and module
 	if [[ ${OS} == 'ubuntu' ]] || [[ ${OS} == 'debian' && ${VERSION_ID} -gt 10 ]]; then
-		apt-get update
-		installPackages apt-get install -y wireguard iptables resolvconf qrencode
+		waitForCloudInit
+		installPackages aptGet update
+		installPackages aptGet install -y wireguard iptables resolvconf qrencode
 	elif [[ ${OS} == 'debian' ]]; then
+		waitForCloudInit
 		if ! grep -rqs "^deb .* buster-backports" /etc/apt/; then
 			echo "deb http://deb.debian.org/debian buster-backports main" >/etc/apt/sources.list.d/backports.list
-			apt-get update
+			installPackages aptGet update
 		fi
-		apt-get update
-		installPackages apt-get install -y iptables resolvconf qrencode
-		installPackages apt-get install -y -t buster-backports wireguard
+		installPackages aptGet update
+		installPackages aptGet install -y iptables resolvconf qrencode
+		installPackages aptGet install -y -t buster-backports wireguard
 	elif [[ ${OS} == 'fedora' ]]; then
 		if [[ ${VERSION_ID} -lt 32 ]]; then
 			installPackages dnf install -y dnf-plugins-core
@@ -255,7 +273,7 @@ PrivateKey = ${SERVER_PRIV_KEY}" >"/etc/wireguard/${SERVER_WG_NIC}.conf"
 
 	if pgrep firewalld; then
 		FIREWALLD_IPV4_ADDRESS=$(echo "${SERVER_WG_IPV4}" | cut -d"." -f1-3)".0"
-		FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/:0/')
+		FIREWALLD_IPV6_ADDRESS="${SERVER_WG_IPV6%:*}:0"
 		echo "PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC} && firewall-cmd --add-port ${SERVER_PORT}/udp && firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' && firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/24 masquerade'
 PostDown = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC} && firewall-cmd --remove-port ${SERVER_PORT}/udp && firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' && firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/24 masquerade'" >>"/etc/wireguard/${SERVER_WG_NIC}.conf"
 	else

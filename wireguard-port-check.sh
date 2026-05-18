@@ -47,6 +47,7 @@ collect_ports_from_file() {
   local port
   local remaining
 
+  # shellcheck disable=SC2094
   while IFS= read -r line || [[ -n "$line" ]]; do
     ((line_no++))
 
@@ -106,13 +107,11 @@ first_port_for() {
   local field="$2"
   local entry
   local entry_role
-  local entry_file
-  local entry_line
   local entry_field
   local entry_port
 
   for entry in "${PORT_ENTRIES[@]}"; do
-    IFS='|' read -r entry_role entry_file entry_line entry_field entry_port <<<"$entry"
+    IFS='|' read -r entry_role _ _ entry_field entry_port <<<"$entry"
     if [[ "$entry_role" == "$role" && "$entry_field" == "$field" ]]; then
       echo "$entry_port"
       return 0

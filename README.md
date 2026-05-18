@@ -31,7 +31,8 @@ Supported distributions:
 Download and execute the script as root. The installer is non-interactive and uses its built-in defaults.
 
 ```bash
-curl -O https://raw.githubusercontent.com/angristan/wireguard-install/master/wireguard-install.sh
+curl -O https://raw.githubusercontent.com/cuimingda/wireguard-toolbox/main/wireguard-install.sh
+curl -O https://raw.githubusercontent.com/cuimingda/wireguard-toolbox/main/wireguard-port-check.sh
 chmod +x wireguard-install.sh
 sudo ./wireguard-install.sh
 ```
@@ -66,7 +67,7 @@ You can [say thanks](https://saythanks.io/to/angristan) if you want!
 
 ## Credits & Licence
 
-This project is under the [MIT Licence](https://raw.githubusercontent.com/angristan/wireguard-install/master/LICENSE)
+This project is forked from [angristan/wireguard-install](https://github.com/angristan/wireguard-install) and is under the [MIT Licence](https://raw.githubusercontent.com/angristan/wireguard-install/master/LICENSE).
 
 ## Star History
 
