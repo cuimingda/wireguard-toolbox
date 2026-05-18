@@ -17,11 +17,30 @@ CLIENT_DNS_1="1.1.1.1"
 CLIENT_DNS_2="1.0.0.1"
 ALLOWED_IPS="0.0.0.0/0,::/0"
 CLIENT_CONFIG_NAME="${SERVER_WG_NIC}-client.conf"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PORT_CHECK_SCRIPT="${SCRIPT_DIR}/wireguard-port-check.sh"
 
 function installPackages() {
 	if ! "$@"; then
 		echo -e "${RED}Failed to install packages.${NC}"
 		echo "Please check your internet connection and package sources."
+		exit 1
+	fi
+}
+
+function runPortCheck() {
+	if [[ ! -f ${PORT_CHECK_SCRIPT} ]]; then
+		echo -e "${RED}Port check script not found: ${PORT_CHECK_SCRIPT}${NC}"
+		exit 1
+	fi
+
+	if [[ ! -r ${PORT_CHECK_SCRIPT} ]]; then
+		echo -e "${RED}Port check script is not readable: ${PORT_CHECK_SCRIPT}${NC}"
+		exit 1
+	fi
+
+	if ! bash "${PORT_CHECK_SCRIPT}"; then
+		echo -e "${RED}WireGuard port audit failed.${NC}"
 		exit 1
 	fi
 }
@@ -97,15 +116,7 @@ function checkOS() {
 }
 
 function getClientConfigDir() {
-	local HOME_DIR
-
-	if [ "${SUDO_USER}" ] && [ "${SUDO_USER}" != "root" ]; then
-		HOME_DIR="/home/${SUDO_USER}"
-	else
-		HOME_DIR="/root"
-	fi
-
-	echo "$HOME_DIR"
+	echo "/root"
 }
 
 function checkExistingWireGuardConfig() {
@@ -312,6 +323,8 @@ net.ipv6.conf.all.forwarding = 1" >/etc/sysctl.d/wg.conf
 		fi
 		echo -e "${ORANGE}If you don't have internet connectivity from your client, try to reboot the server.${NC}"
 	fi
+
+	runPortCheck
 }
 
 function createClientConfig() {
