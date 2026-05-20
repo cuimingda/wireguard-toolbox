@@ -4,6 +4,7 @@ set -u
 
 SERVER_CONFIG_FILE="/etc/wireguard/wg0.conf"
 CLIENT_CONFIG_FILE="/root/wg0-client.conf"
+PARAMS_FILE="/etc/wireguard/params"
 
 FAILURES=()
 PORT_ENTRIES=()
@@ -64,6 +65,14 @@ collect_ports_from_file() {
         add_port_entry "$role" "$file" "$line_no" "Endpoint" "${BASH_REMATCH[1]}"
       else
         add_failure "invalid Endpoint port at $file:$line_no"
+      fi
+    fi
+
+    if [[ "$line" =~ ^[[:space:]]*SERVER_PORT[[:space:]]*= ]]; then
+      if [[ "$line" =~ ^[[:space:]]*SERVER_PORT[[:space:]]*=[[:space:]]*([0-9]+)[[:space:]]*$ ]]; then
+        add_port_entry "$role" "$file" "$line_no" "SERVER_PORT" "${BASH_REMATCH[1]}"
+      else
+        add_failure "invalid SERVER_PORT at $file:$line_no"
       fi
     fi
 
@@ -177,6 +186,7 @@ print_failures() {
 audit_wireguard_ports() {
   local server_file="${1:-$SERVER_CONFIG_FILE}"
   local client_file="${2:-$CLIENT_CONFIG_FILE}"
+  local params_file="${3:-$PARAMS_FILE}"
   local baseline_port=""
 
   FAILURES=()
@@ -190,6 +200,10 @@ audit_wireguard_ports() {
     collect_ports_from_file "client" "$client_file"
   fi
 
+  if check_readable_file "$params_file"; then
+    collect_ports_from_file "params" "$params_file"
+  fi
+
   baseline_port=$(first_port_for "server" "ListenPort" || true)
   if [[ -z "$baseline_port" ]]; then
     add_failure "missing server ListenPort in $server_file"
@@ -197,6 +211,10 @@ audit_wireguard_ports() {
 
   if ! has_port_for "client" "Endpoint"; then
     add_failure "missing client Endpoint port in $client_file"
+  fi
+
+  if ! has_port_for "params" "SERVER_PORT"; then
+    add_failure "missing params SERVER_PORT in $params_file"
   fi
 
   if [[ -n "$baseline_port" ]]; then
@@ -216,7 +234,7 @@ audit_wireguard_ports() {
 }
 
 main() {
-  audit_wireguard_ports "$SERVER_CONFIG_FILE" "$CLIENT_CONFIG_FILE"
+  audit_wireguard_ports "$@"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

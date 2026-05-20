@@ -41,6 +41,12 @@ It will install WireGuard (kernel module and tools) on the server, configure it,
 
 This fork is intended for one server and one peer. Running the script again will fail if `/etc/wireguard/params`, `/etc/wireguard/wg0.conf`, or the target `wg0-client.conf` already exists, so existing configuration is not overwritten.
 
+## Port rotation
+
+`wireguard-random-port.sh` rotates the server UDP port and keeps the server-side artifacts in sync: `/etc/wireguard/wg0.conf`, `/root/wg0-client.conf`, and `/etc/wireguard/params`. The script audits the updated files before restarting `wg-quick@wg0` and again after the restart.
+
+External profiles or local client configuration files are not updated by the server script. Sync those from the updated `/root/wg0-client.conf` after rotating the port.
+
 ## Providers
 
 I recommend these cheap cloud providers for your VPN server:

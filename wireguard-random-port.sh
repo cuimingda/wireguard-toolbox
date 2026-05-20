@@ -6,6 +6,7 @@ set -e
 WG_IFACE="wg0"
 CONFIG_FILE="/etc/wireguard/${WG_IFACE}.conf"
 CLIENT_CONFIG_FILE="/root/wg0-client.conf"
+PARAMS_FILE="/etc/wireguard/params"
 SERVICE="wg-quick@${WG_IFACE}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORT_CHECK_SCRIPT="${SCRIPT_DIR}/wireguard-port-check.sh"
@@ -56,8 +57,7 @@ generate_port() {
 
 check_config_file "$CONFIG_FILE"
 check_config_file "$CLIENT_CONFIG_FILE"
-
-run_port_check
+check_config_file "$PARAMS_FILE"
 
 OLD_PORT=$(get_server_port "$CONFIG_FILE")
 
@@ -65,9 +65,6 @@ NEW_PORT=$(generate_port)
 
 echo "Old port: $OLD_PORT"
 echo "New port: $NEW_PORT"
-
-echo "Stopping service..."
-systemctl stop "$SERVICE"
 
 echo "Updating config..."
 
@@ -79,18 +76,26 @@ sed -i -E "s/(--add-port(=|[[:space:]]+))${OLD_PORT}\/udp/\1${NEW_PORT}\/udp/g" 
   || die "failed to update firewalld add port in $CONFIG_FILE"
 sed -i -E "s/(--remove-port(=|[[:space:]]+))${OLD_PORT}\/udp/\1${NEW_PORT}\/udp/g" "$CONFIG_FILE" \
   || die "failed to update firewalld remove port in $CONFIG_FILE"
-sed -i -E "s#^([[:space:]]*Endpoint[[:space:]]*=[[:space:]]*.+):${OLD_PORT}([[:space:]]*)\$#\1:${NEW_PORT}\2#" "$CLIENT_CONFIG_FILE" \
+sed -i -E "s#^([[:space:]]*Endpoint[[:space:]]*=[[:space:]]*.+):[0-9]+([[:space:]]*)\$#\1:${NEW_PORT}\2#" "$CLIENT_CONFIG_FILE" \
   || die "failed to update Endpoint in $CLIENT_CONFIG_FILE"
+sed -i -E "s#^([[:space:]]*SERVER_PORT[[:space:]]*=[[:space:]]*)[0-9]+([[:space:]]*)\$#\1${NEW_PORT}\2#" "$PARAMS_FILE" \
+  || die "failed to update SERVER_PORT in $PARAMS_FILE"
 
 grep -Eq "^[[:space:]]*ListenPort[[:space:]]*=[[:space:]]*${NEW_PORT}[[:space:]]*$" "$CONFIG_FILE" \
   || die "ListenPort was not updated in $CONFIG_FILE"
+grep -Eq "^[[:space:]]*Endpoint[[:space:]]*=[[:space:]]*.+:${NEW_PORT}[[:space:]]*$" "$CLIENT_CONFIG_FILE" \
+  || die "Endpoint was not updated in $CLIENT_CONFIG_FILE"
+grep -Eq "^[[:space:]]*SERVER_PORT[[:space:]]*=[[:space:]]*${NEW_PORT}[[:space:]]*$" "$PARAMS_FILE" \
+  || die "SERVER_PORT was not updated in $PARAMS_FILE"
 run_port_check
 
-echo "Starting service..."
-systemctl start "$SERVICE"
+echo "Restarting service..."
+systemctl restart "$SERVICE"
 
 echo "Service status:"
 systemctl status "$SERVICE" --no-pager
+
+run_port_check
 
 echo "Checking port binding..."
 if ss -ulnp | grep -q ":$NEW_PORT "; then
