@@ -14,7 +14,7 @@ SERVER_WG_IPV6="fd42:42:42::1"
 CLIENT_WG_IPV4="10.66.66.2"
 CLIENT_WG_IPV6="fd42:42:42::2"
 CLIENT_DNS_1="1.1.1.1"
-CLIENT_DNS_2="1.0.0.1"
+CLIENT_DNS_2="2606:4700:4700::1111"
 ALLOWED_IPS="0.0.0.0/0,::/0"
 CLIENT_CONFIG_NAME="${SERVER_WG_NIC}-client.conf"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -366,7 +366,7 @@ function createClientConfig() {
 	echo "[Interface]
 PrivateKey = ${CLIENT_PRIV_KEY}
 Address = ${CLIENT_WG_IPV4}/32,${CLIENT_WG_IPV6}/128
-DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2}
+DNS = ${CLIENT_DNS_1}, ${CLIENT_DNS_2}
 
 # Uncomment the next line to set a custom MTU
 # This might impact performance, so use it only if you know what you are doing
